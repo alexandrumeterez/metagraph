@@ -354,10 +354,10 @@ void generate_sequences(const DeBruijnGraph &graph,
             paths.push_back(nodes);
 
             // debug
-            std::cout << spelling << " --- " << mutated_string << std::endl;
-            for(auto x: nodes)
-                std::cout << x << " ";
-            std::cout << std::endl;
+//            std::cout << spelling << " --- " << mutated_string << std::endl;
+//            for(auto x: nodes)
+//                std::cout << x << " ";
+//            std::cout << std::endl;
         }
 
     }
@@ -371,7 +371,7 @@ int align_to_graph(Config *config) {
     assert(config->infbase.size());
     // initialize graph
     auto graph = load_critical_dbg(config->infbase);
-    graph->print(std::cout);
+    // graph->print(std::cout);
     
     fprintf(stderr, "Number of nodes: %lu\n", graph->max_index());
     // initialize alphabet
@@ -589,7 +589,7 @@ int align_to_graph(Config *config) {
 
             // Get matched seeds (fwd and bwd)
             auto fwd_seeds = forward_query_seeds[header];
-            auto rc_seeds = rc_query_seeds[header]; //unused
+            // auto rc_seeds = rc_query_seeds[header]; //unused
             precision += explored_nodes_per_kmer_per_query[header];
             if(explored_nodes_per_kmer_per_query[header] > 0.0)
                 n_precision_gt_zero++;
@@ -597,6 +597,20 @@ int align_to_graph(Config *config) {
             // Check if the forward sequence recalled
             for(auto seed : fwd_seeds) {
                 auto seed_nodes = seed.get_nodes();
+                // If sketch seeder, then move the node again forward k-1
+                if (config->seeder == "sketch") {
+                    int num_seeds = seed_nodes.size();
+                    for(int si = 0; si < num_seeds; ++si) {
+                        auto curr_node = seed_nodes[si];
+                        for(int step = 1; step <= graph->get_k()-1; ++step) {
+                            graph->call_outgoing_kmers(curr_node, [&](DeBruijnGraph::node_index dest_kmer, char next_char){
+                                curr_node = dest_kmer;
+                            });
+                        }
+
+                        seed_nodes[si] = curr_node;
+                    }
+                }
 
                 int match_start = seed.get_clipping();
                 int num_matched = seed_nodes.size();
