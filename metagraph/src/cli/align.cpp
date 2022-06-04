@@ -508,7 +508,7 @@ int align_to_graph(Config *config) {
         std::unordered_map<std::string, std::vector<Seed>> forward_query_seeds;
         std::unordered_map<std::string, std::vector<Seed>> rc_query_seeds;
         std::unordered_map<std::string, double> explored_nodes_per_kmer_per_query;
-
+        std::mutex stats_mutex;
         while (it != end) {
             uint64_t num_bytes_read = 0;
 
@@ -566,11 +566,14 @@ int align_to_graph(Config *config) {
                 );
 
                 // Merge into the big map
-                forward_query_seeds.merge(aligner->forward_query_seeds);
-                rc_query_seeds.merge(aligner->rc_query_seeds);
-                explored_nodes_per_kmer_per_query.merge(aligner->explored_nodes_per_kmer_per_query);
+                std::lock_guard<std::mutex> lock1(stats_mutex);
+                {
+                    forward_query_seeds.merge(aligner->forward_query_seeds);
+                    rc_query_seeds.merge(aligner->rc_query_seeds);
+                    explored_nodes_per_kmer_per_query.merge(aligner->explored_nodes_per_kmer_per_query);
+                }
             });
-        };
+        }
 
         thread_pool.join();
 
